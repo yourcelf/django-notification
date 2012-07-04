@@ -4,27 +4,8 @@ from django.http import HttpResponseRedirect, Http404
 from django.template import RequestContext
 
 from django.contrib.auth.decorators import login_required
-try:
-    from django.contrib.syndication.views import Feed
-except ImportError:
-    from django.contrib.syndication.views import feed as Feed
-
 
 from notification.models import *
-from notification.decorators import basic_auth_required, simple_basic_auth_callback
-from notification.feeds import NoticeUserFeed
-
-
-@basic_auth_required(realm="Notices Feed", callback_func=simple_basic_auth_callback)
-def feed_for_user(request):
-    """
-    An atom feed for all unarchived :model:`notification.Notice`s for a user.
-    """
-    url = "feed/%s" % request.user.username
-    return Feed(request, url, {
-        "feed": NoticeUserFeed,
-    })
-
 
 @login_required
 def notices(request):

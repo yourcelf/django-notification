@@ -1,3 +1,27 @@
+This is modified from jtauber's django-notification in the following ways:
+
+ - Removed the "feeds" API which was broken for Django 1.4, and unused by most
+   and relied on unsecure HTTP Basic Auth.
+ - Added SMS notifications, via carrier email gateways; carrier gateways
+   defined in `notification.carriers`.
+ - Added HTML email notifications.
+ - Changed naming convention for notification templates, and removed base
+   templates for email to simplify template architecture (you can implement
+   your own base templates for 'email_subject' or 'email_body' if you wish).
+   New template names are as follows:
+
+   notifications/<notice type>/email_subject.txt (was `short.txt`; base template removed)
+   notifications/<notice type>/email_body.txt    (was `full.txt`; base template removed)
+   notifications/<notice type>/email_body.html   (new)
+   notifications/<notice type>/web_body.html     (was `notice.html`)
+   notifications/<notice type>/sms.txt           (new)
+
+   If `email_body.html` is empty, the message will be sent as single-part text
+   only.  If it is non-empty, the message is sent multi-part with text/html and
+   text/plain.
+
+Original README follows:
+------
 
 Many sites need to notify users when certain events have occurred and to allow
 configurable options as to how those notifications are to be received.

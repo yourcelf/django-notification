@@ -315,7 +315,7 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         })
         context.update(extra_context)
         notice = Notice.objects.create(recipient=user,
-                message=render_notice("web_body.html", label, context)
+                message=render_notice("web_body.html", label, context),
                 notice_type=notice_type,
                 on_site=on_site,
                 sender=sender)

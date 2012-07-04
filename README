@@ -10,11 +10,11 @@ This is modified from jtauber's django-notification in the following ways:
    your own base templates for 'email_subject' or 'email_body' if you wish).
    New template names are as follows:
 
-   notifications/<notice type>/email_subject.txt (was `short.txt`; base template removed)
-   notifications/<notice type>/email_body.txt    (was `full.txt`; base template removed)
-   notifications/<notice type>/email_body.html   (new)
-   notifications/<notice type>/web_body.html     (was `notice.html`)
-   notifications/<notice type>/sms.txt           (new)
+   notification/<notice type>/email_subject.txt (was `short.txt`; base removed)
+   notification/<notice type>/email_body.txt    (was `full.txt`; base removed)
+   notification/<notice type>/email_body.html   (new)
+   notification/<notice type>/web_body.html     (was `notice.html`)
+   notification/<notice type>/sms.txt           (new)
 
    If `email_body.html` is empty, the message will be sent as single-part text
    only.  If it is non-empty, the message is sent multi-part with text/html and

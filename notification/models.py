@@ -55,8 +55,8 @@ NOTICE_MEDIA = (
 
 # how spam-sensitive is the medium
 NOTICE_MEDIA_DEFAULTS = {
-    "1": 2 # email
-    "2": 3 # text message 
+    "1": 2, # email
+    "2": 3, # text message 
 }
 
 class NoticeSetting(models.Model):
@@ -241,22 +241,18 @@ def get_notification_language(user):
     raise LanguageStoreNotAvailable
 
 
-def get_formatted_messages(formats, label, context):
+def render_notice(format_name, label, context):
     """
     Returns a dictionary with the format identifier as the key. The values are
     are fully rendered templates with the given context.
     """
-    format_templates = {}
-    for format in formats:
-        # conditionally turn off autoescaping for .txt extensions in format
-        if format.endswith(".txt"):
-            context.autoescape = False
-        else:
-            context.autoescape = True
-        format_templates[format] = render_to_string((
-            "notification/%s/%s" % (label, format),
-            "notification/%s" % format), context_instance=context)
-    return format_templates
+    # conditionally turn off autoescaping for .txt extensions in format
+    if format_name.endswith(".txt"):
+        context.autoescape = False
+    else:
+        context.autoescape = True
+    return render_to_string("notification/%s/%s" % (label, format_name),
+            context_instance=context)
 
 
 def send_now(users, label, extra_context=None, on_site=True, sender=None):
@@ -313,18 +309,17 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         context = Context({
             "recipient": user,
             "sender": sender,
-            "notice": ugettext(notice_type.display),
+            "notice_type": notice_type,
             "notices_url": notices_url,
             "current_site": current_site,
         })
         context.update(extra_context)
-        messages = get_formatted_messages(formats, label, context)
-
         notice = Notice.objects.create(recipient=user,
-                message=messages["web_body.html"],
+                message=render_notice("web_body.html", label, context)
                 notice_type=notice_type,
                 on_site=on_site,
                 sender=sender)
+        context['notice'] = notice
 
         if not user.is_active
             continue
@@ -332,11 +327,12 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         # Email
         if should_send(user, notice_type, "1") and user.email:
             send_multipart_email(
-                    subject=messages["email_subject.txt"].strip(),
-                    message=messages["email_body.txt"],
+                    subject=render_notice("email_subject.txt", label, context).strip(),
+                    message=render_notice("email_body.txt", label, context),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
-                    html_messsage=messages["email_body.html"] or None)
+                    html_messsage=render_notice("email_body.html",
+                                                label, context).strip() or None)
 
         # SMS
         if should_send(user, notice_type, "2"):
@@ -353,7 +349,7 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
                 gateway = MOBILE_CARRIERS[profile.mobile_carrier]['sms'].format(
                         number=profile.mobile_number)
                 send_mail(
-                    subject=messages["sms.txt"].strip(),
+                    subject=render_notice("sms.txt", label, context).strip(),
                     message="",
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[gateway])

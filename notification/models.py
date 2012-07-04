@@ -1,9 +1,13 @@
-import datetime
-
 try:
     import cPickle as pickle
 except ImportError:
     import pickle
+
+try:
+    from django.utils.timezone import now
+except ImportError:
+    import datetime
+    now = lambda: datetime.datetime.now()
 
 from django.db import models
 from django.db.models.query import QuerySet
@@ -49,14 +53,14 @@ class NoticeType(models.Model):
 
 # if this gets updated, the create() method below needs to be as well...
 NOTICE_MEDIA = (
-    ("1", _("Email")),
-    ("2", _("Text Message")),
+    ("email", _("Email")),
+    ("sms", _("Text Message")),
 )
 
 # how spam-sensitive is the medium
 NOTICE_MEDIA_DEFAULTS = {
-    "1": 2, # email
-    "2": 3, # text message 
+    "email": 2,
+    "sms": 3,
 }
 
 class NoticeSetting(models.Model):
@@ -67,7 +71,7 @@ class NoticeSetting(models.Model):
     
     user = models.ForeignKey(User, verbose_name=_("user"))
     notice_type = models.ForeignKey(NoticeType, verbose_name=_("notice type"))
-    medium = models.CharField(_("medium"), max_length=1, choices=NOTICE_MEDIA)
+    medium = models.CharField(_("medium"), max_length=16, choices=NOTICE_MEDIA)
     send = models.BooleanField(_("send"))
     
     class Meta:
@@ -89,7 +93,7 @@ def get_notification_setting(user, notice_type, medium):
 def should_send(user, notice_type, medium):
     return get_notification_setting(user, notice_type, medium).send
 
-def send_multipart(subject, message, from_email, recipient_list, html_message=None, **kwargs):
+def send_multipart_email(subject, message, from_email, recipient_list, html_message=None, **kwargs):
     if not html_message:
         send_mail(subject, message, from_email, recipient_list, **kwargs)
     else:
@@ -151,7 +155,7 @@ class Notice(models.Model):
     sender = models.ForeignKey(User, null=True, related_name="sent_notices", verbose_name=_("sender"))
     message = models.TextField(_("message"))
     notice_type = models.ForeignKey(NoticeType, verbose_name=_("notice type"))
-    added = models.DateTimeField(_("added"), default=datetime.datetime.now)
+    added = models.DateTimeField(_("added"), default=now)
     unseen = models.BooleanField(_("unseen"), default=True)
     archived = models.BooleanField(_("archived"), default=False)
     on_site = models.BooleanField(_("on site"))
@@ -285,14 +289,6 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
     
     current_language = get_language()
     
-    formats = (
-        "email_subject.txt",
-        "email_body.txt",
-        "email_body.html",
-        "web_body.html",
-        "sms.txt",
-    ) # TODO make formats configurable
-    
     for user in users:
         # get user language for user from language store defined in
         # NOTIFICATION_LANGUAGE_MODULE setting
@@ -307,6 +303,7 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         
         # prerender messages. update context with user specific translations
         context = Context({
+            "protocol": protocol,
             "recipient": user,
             "sender": sender,
             "notice_type": notice_type,
@@ -321,21 +318,21 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
                 sender=sender)
         context['notice'] = notice
 
-        if not user.is_active
+        if not user.is_active:
             continue
 
         # Email
-        if should_send(user, notice_type, "1") and user.email:
+        if should_send(user, notice_type, "email") and user.email:
             send_multipart_email(
                     subject=render_notice("email_subject.txt", label, context).strip(),
                     message=render_notice("email_body.txt", label, context),
                     from_email=settings.DEFAULT_FROM_EMAIL,
                     recipient_list=[user.email],
-                    html_messsage=render_notice("email_body.html",
+                    html_message=render_notice("email_body.html",
                                                 label, context).strip() or None)
 
         # SMS
-        if should_send(user, notice_type, "2"):
+        if should_send(user, notice_type, "sms"):
             try:
                 profile = user.get_profile()
             except ObjectDoesNotExist:
@@ -423,7 +420,7 @@ class ObservedItem(models.Model):
     
     notice_type = models.ForeignKey(NoticeType, verbose_name=_("notice type"))
     
-    added = models.DateTimeField(_("added"), default=datetime.datetime.now)
+    added = models.DateTimeField(_("added"), default=now)
     
     # the signal that will be listened to send the notice
     signal = models.TextField(verbose_name=_("signal"))

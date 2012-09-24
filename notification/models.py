@@ -312,11 +312,13 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
         })
         context.update(extra_context)
         notice = Notice.objects.create(recipient=user,
-                message=render_notice("web_body.html", label, context),
+                message='',
                 notice_type=notice_type,
                 on_site=on_site,
                 sender=sender)
         context['notice'] = notice
+        notice.message = render_notice("web_body.html", label, context),
+        notice.save()
 
         if not user.is_active:
             continue

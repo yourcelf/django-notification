@@ -317,7 +317,7 @@ def send_now(users, label, extra_context=None, on_site=True, sender=None):
                 on_site=on_site,
                 sender=sender)
         context['notice'] = notice
-        notice.message = render_notice("web_body.html", label, context),
+        notice.message = render_notice("web_body.html", label, context)
         notice.save()
 
         if not user.is_active:
